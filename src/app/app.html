@@ -1,0 +1,295 @@
+<!-- Probe element for measuring --H height -->
+<div #heightProbe class="height-probe" aria-hidden="true"></div>
+
+<!-- 1. Paper grain full-screen overlay -->
+<div class="paper-grain" aria-hidden="true">
+  <svg class="paper-grain-svg" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+    <filter id="grain-filter" x="0%" y="0%" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch" />
+      <feColorMatrix type="matrix" values="0 0 0 0 0.45  0 0 0 0 0.42  0 0 0 0 0.38  0 0 0 0.22 0" />
+    </filter>
+    <rect width="100%" height="100%" filter="url(#grain-filter)" />
+  </svg>
+</div>
+
+<!-- 2. Halftone kanji watermarks -->
+<div class="kanji-watermark kanji-left" aria-hidden="true">映画</div>
+<div class="kanji-watermark kanji-right" aria-hidden="true">の記憶</div>
+
+<!-- 3. Top bar -->
+<header class="top-bar">
+  <div class="top-bar-left">
+    <a href="#" class="lbl brand-link hover-btn" (click)="$event.preventDefault()">LEON VASARI</a>
+    <div class="brand-line"></div>
+    <span class="lbl">FILM ARCHIVE</span>
+  </div>
+  <div class="top-bar-right">
+    <nav class="top-nav-links">
+      <a href="#" class="lbl nav-link hover-btn" (click)="$event.preventDefault()">FILMS</a>
+      <a href="#" class="lbl nav-link hover-btn" (click)="$event.preventDefault()">ABOUT</a>
+      <a href="#" class="lbl nav-link hover-btn" (click)="$event.preventDefault()">JOURNAL</a>
+    </nav>
+    <button class="burger-btn hover-btn" aria-label="Menu" (click)="$event.preventDefault()">
+      <span class="burger-line"></span>
+      <span class="burger-line"></span>
+    </button>
+  </div>
+</header>
+
+<!-- 4. Floor shadow -->
+<div class="floor-shadow" aria-hidden="true"></div>
+
+<!-- 5. Shelf viewport -->
+<section
+  #shelfViewport
+  class="shelf-viewport"
+  (pointerdown)="onShelfPointerDown($event)"
+  (wheel)="onShelfWheel($event)"
+>
+  <div
+    #stageEl
+    class="stage"
+    [style.--ws-px.px]="ws"
+    [style.--d-px.px]="d"
+    [style.--H-px.px]="H"
+  >
+    @for (t of tapes; track t.v) {
+      <div
+        class="tape"
+        [attr.data-v]="t.v"
+        role="button"
+        tabindex="0"
+        [attr.aria-label]="t.film.title"
+        (pointerenter)="onTapePointerEnter(t.v)"
+        (pointerleave)="onTapePointerLeave(t.v)"
+        (click)="onTapeClick(t.v)"
+        (keydown.enter)="onTapeClick(t.v)"
+        (keydown.space)="onTapeClick(t.v); $event.preventDefault()"
+      >
+        <div class="tape-face sp">
+          <div
+            class="face-art"
+            [style.backgroundImage]="t.film.spineBg.backgroundImage"
+            [style.backgroundSize]="t.film.spineBg.backgroundSize"
+            [style.backgroundPosition]="t.film.spineBg.backgroundPosition"
+            [style.backgroundRepeat]="t.film.spineBg.backgroundRepeat"
+          ></div>
+          <div class="face-shade"></div>
+        </div>
+        <div class="tape-face cv">
+          <div
+            class="face-art"
+            [style.backgroundImage]="t.film.coverBg.backgroundImage"
+            [style.backgroundSize]="t.film.coverBg.backgroundSize"
+            [style.backgroundPosition]="t.film.coverBg.backgroundPosition"
+            [style.backgroundRepeat]="t.film.coverBg.backgroundRepeat"
+          ></div>
+          <div class="face-shade"></div>
+        </div>
+      </div>
+    }
+  </div>
+</section>
+
+<!-- 6. Play ring -->
+<button
+  #playRingBtn
+  class="play-ring hover-btn"
+  [style.left.px]="playRingX"
+  [style.top.px]="playRingY"
+  [style.transform]="'translate(-50%, -50%) scale(' + playRingScale + ')'"
+  (click)="openDetail()"
+  aria-label="Open film detail"
+>
+  <svg viewBox="0 0 12 12" fill="none">
+    <path d="M2.5 1.5L10.5 6L2.5 10.5V1.5Z" fill="#1F3FB0" />
+  </svg>
+</button>
+
+<!-- 7. Caption -->
+<div class="caption-wrap" aria-live="polite">
+  <div #subtitleMask class="caption-mask subtitle-mask">
+    <span class="caption-line caption-subtitle lbl">{{ activeFilm.romaji }} / {{ activeFilm.kanji }}</span>
+  </div>
+  <div #titleMask class="caption-mask title-mask">
+    <h1 class="caption-line caption-title">{{ activeFilm.title }}</h1>
+  </div>
+  <div class="caption-rule"></div>
+  <div #yearMask class="caption-mask year-mask">
+    <span class="caption-line caption-year">{{ activeFilm.year }} — {{ activeFilm.genre | uppercase }}</span>
+  </div>
+</div>
+
+<!-- 8. Arrows -->
+<button class="arrow-btn arrow-left hover-btn" (click)="step(-1)" aria-label="Previous film">
+  <svg width="24" height="12" viewBox="0 0 24 12" fill="none" stroke="currentColor" stroke-width="1.2">
+    <path d="M6 1L1 6l5 5M1 6h23" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+</button>
+<button class="arrow-btn arrow-right hover-btn" (click)="step(1)" aria-label="Next film">
+  <svg width="24" height="12" viewBox="0 0 24 12" fill="none" stroke="currentColor" stroke-width="1.2">
+    <path d="M18 1l5 5-5 5M23 6H0" stroke-linecap="round" stroke-linejoin="round" />
+  </svg>
+</button>
+
+<!-- 9. Timeline -->
+<div #timelineWrap class="timeline-wrap">
+  <div class="timeline-line"></div>
+  @for (item of timelineTicks; track item.year) {
+    <div
+      class="timeline-tick"
+      [class.major]="item.isMajor"
+      [class.minor]="!item.isMajor"
+      [style.left.%]="item.pct * 100"
+    ></div>
+    @if (item.isMajor) {
+      <span
+        class="timeline-label"
+        [class.first]="item.isFirst"
+        [class.last]="item.isLast"
+        [class.even-tick]="item.isEvenTick"
+        [style.left.%]="item.pct * 100"
+      >
+        {{ item.year }}
+      </span>
+    }
+  }
+  <div class="timeline-dot" [style.left.%]="dotLeftPercent"></div>
+  <div
+    class="timeline-hitarea hover-btn"
+    role="slider"
+    tabindex="0"
+    [attr.aria-valuenow]="dotYear"
+    aria-valuemin="1955"
+    aria-valuemax="1990"
+    aria-label="Archive timeline"
+    (click)="onTimelineClick($event)"
+    (keydown)="onTimelineKey($event)"
+  ></div>
+</div>
+
+<!-- 10. Footer -->
+<footer class="footer-wrap">
+  <div class="footer-left lbl">
+    © LEON VASARI. ALL RIGHTS RESERVED.
+  </div>
+  <div class="footer-right lbl">
+    <a href="#" class="footer-link hover-btn" (click)="$event.preventDefault()">FB</a>
+    <span>/</span>
+    <a href="#" class="footer-link hover-btn" (click)="$event.preventDefault()">TW</a>
+  </div>
+</footer>
+
+<!-- 11. Custom Cursor -->
+<div #cursorEl class="custom-cursor" aria-hidden="true">
+  <div class="cursor-ring"></div>
+  <div class="cursor-dot"></div>
+  <div class="cursor-label">
+    <span>OPEN</span>
+    <span>開く</span>
+  </div>
+</div>
+
+<!-- 12. Detail sheet -->
+<div
+  #detailSheet
+  class="detail-sheet"
+  [style.display]="detailOpen ? 'grid' : 'none'"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-label]="activeFilm.title + ' details'"
+>
+  <button class="detail-close-btn box lbl hover-btn" (click)="closeDetail()">
+    CLOSE / 閉じる
+  </button>
+  <div class="detail-brand-copy lbl">
+    <span>LEON VASARI</span>
+    <span>——</span>
+    <span>FILM ARCHIVE</span>
+  </div>
+
+  <!-- Left column -->
+  <div class="detail-left-col">
+    <!-- Line 1: Subtitle -->
+    <div class="detail-mask">
+      <span class="detail-mask-inner detail-subtitle lbl">
+        {{ activeFilm.romaji }} / {{ activeFilm.kanji }}
+      </span>
+    </div>
+
+    <!-- Line 2: Title -->
+    <div class="detail-mask">
+      <h2 class="detail-mask-inner detail-title">
+        {{ activeFilm.title }}
+      </h2>
+    </div>
+
+    <!-- Line 3: Meta -->
+    <div class="detail-mask">
+      <span class="detail-mask-inner detail-meta">
+        {{ activeFilm.year }} / {{ activeFilm.genre | uppercase }} / {{ activeFilm.min }} MIN
+      </span>
+    </div>
+
+    <!-- Line 4: Synopsis -->
+    <div class="detail-mask">
+      <p class="detail-mask-inner detail-synopsis">
+        {{ activeFilm.synopsis }}
+      </p>
+    </div>
+
+    <!-- Line 5: Credit -->
+    <div class="detail-mask">
+      <p class="detail-mask-inner detail-credit">
+        Written and directed by Leon Vasari. 監督作品
+      </p>
+    </div>
+
+    <!-- Line 6: Watch Button -->
+    <div class="detail-mask">
+      <div class="detail-mask-inner">
+        <button class="detail-watch-btn lbl hover-btn">
+          WATCH THE FILM / 映画を見る
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right column: Poster SVG -->
+  <div class="detail-right-col">
+    <svg viewBox="0 0 474 900" class="poster-svg" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <filter id="ink-filter" x="-25%" y="-25%" width="150%" height="150%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.011" numOctaves="3" seed="7" result="noise" />
+          <feDisplacementMap in="SourceGraphic" in2="noise" scale="120" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+        <mask id="poster-ink-mask">
+          <g filter="url(#ink-filter)">
+            <circle class="ink-circle" cx="150" cy="330" r="0" fill="#ffffff" />
+            <circle class="ink-circle" cx="340" cy="600" r="0" fill="#ffffff" />
+            <circle class="ink-circle" cx="250" cy="120" r="0" fill="#ffffff" />
+            <circle class="ink-circle" cx="90" cy="760" r="0" fill="#ffffff" />
+            <circle class="ink-circle" cx="400" cy="250" r="0" fill="#ffffff" />
+            <circle class="ink-circle" cx="260" cy="860" r="0" fill="#ffffff" />
+            <circle class="ink-circle" cx="230" cy="470" r="0" fill="#ffffff" />
+          </g>
+        </mask>
+        <clipPath id="poster-clip">
+          <rect x="0" y="0" width="474" height="900" rx="3" ry="3" />
+        </clipPath>
+      </defs>
+      <g clip-path="url(#poster-clip)">
+        <g mask="url(#poster-ink-mask)">
+          <image
+            [attr.href]="activeFilm.poster.url"
+            [attr.x]="activeFilm.poster.x"
+            [attr.y]="activeFilm.poster.y"
+            [attr.width]="activeFilm.poster.width"
+            [attr.height]="activeFilm.poster.height"
+            preserveAspectRatio="none"
+          />
+        </g>
+      </g>
+    </svg>
+  </div>
+</div>
