@@ -25,11 +25,17 @@
   </div>
   <div class="top-bar-right">
     <nav class="top-nav-links">
-      <a href="#" class="lbl nav-link hover-btn" (click)="$event.preventDefault()">FILMS</a>
-      <a href="#" class="lbl nav-link hover-btn" (click)="$event.preventDefault()">ABOUT</a>
-      <a href="#" class="lbl nav-link hover-btn" (click)="$event.preventDefault()">JOURNAL</a>
+      <a href="#" class="lbl nav-link hover-btn" (click)="$event.preventDefault(); openMenu(); onMenuSelect('films')">FILMS</a>
+      <a href="#" class="lbl nav-link hover-btn" (click)="$event.preventDefault(); openMenu(); onMenuSelect('biography')">ABOUT</a>
+      <a href="#" class="lbl nav-link hover-btn" (click)="$event.preventDefault(); openMenu(); onMenuSelect('journal')">JOURNAL</a>
     </nav>
-    <button class="burger-btn hover-btn" aria-label="Menu" (click)="$event.preventDefault()">
+    <button
+      #burgerBtn
+      class="burger-btn hover-btn"
+      [class.is-open]="menuOpen"
+      aria-label="Menu"
+      (click)="toggleMenu()"
+    >
       <span class="burger-line"></span>
       <span class="burger-line"></span>
     </button>
@@ -292,4 +298,209 @@
       </g>
     </svg>
   </div>
+</div>
+
+<!-- 13. Full-Screen Archival Menu -->
+<div
+  #menuSheet
+  class="menu-sheet"
+  [class.is-open]="menuOpen"
+  [style.display]="menuOpen ? 'flex' : 'none'"
+  role="dialog"
+  aria-modal="true"
+  aria-label="Archive Navigation Directory"
+>
+  <!-- Background Halftone Kanji and Paper Grain -->
+  <div class="kanji-watermark kanji-menu-left" aria-hidden="true">映画</div>
+  <div class="kanji-watermark kanji-menu-right" aria-hidden="true">の記憶</div>
+
+  <!-- Top bar inside menu -->
+  <header class="menu-top-bar">
+    <div class="menu-top-left lbl">
+      <span class="text-cobalt">LEON VASARI</span>
+      <span class="mx-2 opacity-50">——</span>
+      <span class="text-cobalt">FILM ARCHIVE</span>
+    </div>
+    <div class="menu-top-right">
+      <button class="menu-close-btn box lbl hover-btn" (click)="closeMenu()">
+        CLOSE / 閉じる
+      </button>
+    </div>
+  </header>
+
+  <!-- Menu Body -->
+  @if (activeMenuSection === 'nav') {
+    <div class="menu-content-grid">
+      <!-- Left Column: Primary Navigation Items -->
+      <div class="menu-nav-column">
+        <div class="menu-kicker-mask mb-4">
+          <span class="menu-mask-inner lbl text-stone-500 tracking-[0.2em] block">
+            ARCHIVAL DIRECTORY / 目録
+          </span>
+        </div>
+
+        <nav class="menu-nav-list" aria-label="Main menu">
+          @for (item of menuItems; track item.id; let i = $index) {
+            <div
+              class="menu-item-row"
+              (mouseenter)="hoveredMenuIdx = i"
+              (focusin)="hoveredMenuIdx = i"
+            >
+              <div class="menu-mask">
+                <a
+                  href="#"
+                  class="menu-mask-inner menu-nav-link hover-btn"
+                  [class.is-hovered]="hoveredMenuIdx === i"
+                  (click)="$event.preventDefault(); onMenuSelect(item.id)"
+                >
+                  <span class="menu-nav-title">
+                    <span class="menu-nav-num font-mono">{{ item.num }}</span>
+                    <span>{{ item.title }}</span>
+                  </span>
+                  <span class="menu-nav-sub lbl">
+                    {{ item.romaji }} / {{ item.kanji }}
+                  </span>
+                </a>
+              </div>
+            </div>
+          }
+        </nav>
+      </div>
+
+      <!-- Right Column: Curatorial Dossier & Preview -->
+      <div class="menu-dossier-column">
+        <div class="menu-dossier-card">
+          <div class="menu-dossier-header">
+            <span class="lbl tracking-[0.2em] text-cobalt">DIRECTOR'S DOSSIER / 資料要覧</span>
+            <span class="lbl text-stone-400 font-mono">{{ menuItems[hoveredMenuIdx].meta }}</span>
+          </div>
+
+          <div class="menu-dossier-body">
+            <h3 class="menu-dossier-title">
+              {{ menuItems[hoveredMenuIdx].title }}
+            </h3>
+            <p class="menu-dossier-sub lbl text-cobalt">
+              {{ menuItems[hoveredMenuIdx].romaji }} — {{ menuItems[hoveredMenuIdx].kanji }}
+            </p>
+            <p class="menu-dossier-desc">
+              {{ menuItems[hoveredMenuIdx].desc }}
+            </p>
+
+            <!-- Quick Films jump list when hovering or focusing Films or Archive -->
+            @if (menuItems[hoveredMenuIdx].id === 'films' || menuItems[hoveredMenuIdx].id === 'archive') {
+              <div class="menu-quick-films">
+                <span class="lbl text-stone-500 text-[9px] tracking-widest block mb-2">QUICK JUMP TO TAPE:</span>
+                <div class="quick-films-grid">
+                  @for (f of films; track f.id; let fIdx = $index) {
+                    <button
+                      class="quick-film-item hover-btn"
+                      [class.active]="fIdx === activeFilmIndex"
+                      (click)="jumpToFilmFromMenu(fIdx)"
+                    >
+                      <span class="font-mono text-[10px] text-stone-400 mr-1.5">{{ f.year }}</span>
+                      <span class="text-xs font-medium truncate">{{ f.title }}</span>
+                    </button>
+                  }
+                </div>
+              </div>
+            } @else {
+              <!-- Curatorial quotes -->
+              <div class="menu-curatorial-quote">
+                <p class="italic text-stone-700 font-serif text-[15px] leading-relaxed">
+                  “The camera does not invent silence; it merely waits until the village forgets it is being watched.”
+                </p>
+                <span class="lbl text-stone-500 text-[9.5px] block mt-2">
+                  — Leon Vasari, Kyoto Studio Notes (1964)
+                </span>
+              </div>
+            }
+          </div>
+
+          <div class="menu-dossier-footer">
+            <div class="accession-stamp lbl">
+              <span>VASARI ESTATE // ARCHIVIO CINEMATOGRAFICO</span>
+              <span>12 REPERTOIRE WORKS · 1955-1990</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  } @else {
+    <!-- Sub-section Views: Biography, Journal, Contact -->
+    <div class="menu-subsection-view">
+      <button class="subsection-back-btn box lbl hover-btn" (click)="closeSubSection()">
+        ← RETURN TO DIRECTORY / 目録に戻る
+      </button>
+
+      <div class="subsection-content">
+        @switch (activeMenuSection) {
+          @case ('biography') {
+            <span class="lbl text-cobalt tracking-[0.24em] block mb-2">MONOGRAPH 03 / 伝記と映画理念</span>
+            <h2 class="subsection-title">Leon Vasari</h2>
+            <div class="subsection-meta lbl text-stone-500 mb-6">
+              BORN 1928, MILANO · APPRENTICE IN KYOTO · 12 REPERTOIRE RETROSPECTIVE
+            </div>
+            <div class="subsection-prose">
+              <p>
+                Leon Vasari was an anomaly of mid-century world cinema. Born in the working-class industrial periphery of Milan, he left Italy in 1952 aboard an ocean cargo vessel bound for Kobe, carrying only a 16mm hand-cranked Paillard Bolex and a letter of recommendation written by Cesare Zavattini.
+              </p>
+              <p>
+                Over seven years in Kyoto, Vasari worked under the austere studio disciplines of master Kenji Mizoguchi and lighting director Kazuo Miyagawa. In his cinema, the stark realism of post-war Italian neorealism converged with the ritual stillness, bleached salt textures, and slow seasonal tides of Japanese period filmmaking.
+              </p>
+              <p>
+                Across thirty years and twelve feature films—from <em>The Silent Valley (1958)</em> to the haunting nocturnal labyrinth of <em>Red Door (1989)</em>—Vasari refused commercial distribution contracts, ensuring every reel was preserved in bespoke hand-screened slipcases.
+              </p>
+            </div>
+          }
+          @case ('journal') {
+            <span class="lbl text-cobalt tracking-[0.24em] block mb-2">DISPATCHES 04 / 制作日誌と覚書</span>
+            <h2 class="subsection-title">Production Dispatches</h2>
+            <div class="subsection-meta lbl text-stone-500 mb-6">
+              COLLECTED NOTES FROM THE SHOOTING OF ‘RIVER OF SALT’ & ‘NOON IN ASHES’
+            </div>
+            <div class="subsection-prose">
+              <div class="journal-entry mb-6">
+                <span class="lbl text-cobalt block mb-1 font-mono">OCTOBER 14, 1963 · SET DISPATCH // LAKE BIWA</span>
+                <p>
+                  “We dragged the wooden barge into the reeds at dawn. The fog refused to break. Miyagawa instructed us not to light the actors’ faces; let the salt bags reflect the gray sky into their eyes. If the audience cannot hear the river freezing, the scene is empty.”
+                </p>
+              </div>
+              <div class="journal-entry">
+                <span class="lbl text-cobalt block mb-1 font-mono">AUGUST 3, 1970 · WHITE DESERT EXPEDITION</span>
+                <p>
+                  “Three miles of bleached chalk flats. The horses could only run two takes before their breath gave out. A western without heroes or pistols—only a rider counting miles between abandoned water wells.”
+                </p>
+              </div>
+            </div>
+          }
+          @case ('contact') {
+            <span class="lbl text-cobalt tracking-[0.24em] block mb-2">INQUIRIES 05 / 連絡と貸出窓口</span>
+            <h2 class="subsection-title">Archive Desk & Licensing</h2>
+            <div class="subsection-meta lbl text-stone-500 mb-6">
+              PRESERVATION ARCHIVE · 35MM RETROSPECTIVES · CINEMATHEQUE LOANS
+            </div>
+            <div class="subsection-prose">
+              <p>
+                The Leon Vasari Archival Estate administers exhibition rights, 4K digital transfers, and original 35mm photochemical archival prints for cultural institutions, museums, and film festivals worldwide.
+              </p>
+              <div class="contact-details mt-6 space-y-3">
+                <div>
+                  <span class="lbl text-stone-500 block text-[9.5px]">ARCHIVE HEADQUARTERS</span>
+                  <span class="font-medium text-stone-800">Cineteca Vasari, Via San Marco 14, 20121 Milano, Italy</span>
+                </div>
+                <div>
+                  <span class="lbl text-stone-500 block text-[9.5px]">KYOTO RESEARCH ATELIER</span>
+                  <span class="font-medium text-stone-800">Kamigamo Minamioji-cho, Kita-ku, Kyoto 603-8071, Japan</span>
+                </div>
+                <div>
+                  <span class="lbl text-stone-500 block text-[9.5px]">GENERAL & CURATORIAL INQUIRIES</span>
+                  <span class="text-cobalt font-medium">curator&#64;leonvasari-archive.org</span>
+                </div>
+              </div>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  }
 </div>

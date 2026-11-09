@@ -53,6 +53,61 @@ export class App implements OnInit, OnDestroy {
   @ViewChild('titleMask') titleMaskRef?: ElementRef<HTMLElement>;
   @ViewChild('yearMask') yearMaskRef?: ElementRef<HTMLElement>;
 
+  @ViewChild('burgerBtn') burgerBtnRef?: ElementRef<HTMLElement>;
+  @ViewChild('menuSheet') menuSheetRef?: ElementRef<HTMLElement>;
+
+  menuOpen = false;
+  activeMenuSection: 'nav' | 'biography' | 'journal' | 'contact' = 'nav';
+  hoveredMenuIdx = 0;
+
+  readonly menuItems = [
+    {
+      id: 'archive',
+      num: '01',
+      title: 'ARCHIVE',
+      romaji: 'SHIRYO',
+      kanji: '資料保管庫',
+      desc: 'Curved 3D retrospective shelf containing 36 physical VHS editions of Leon Vasari’s directorial oeuvre.',
+      meta: '12 WORKS · 1958–1989',
+    },
+    {
+      id: 'films',
+      num: '02',
+      title: 'FILMS',
+      romaji: 'EIGA',
+      kanji: '作品一覧',
+      desc: 'Comprehensive chronological filmography from The Silent Valley (1958) to Red Door (1989).',
+      meta: 'COMPLETE FILMOGRAPHY',
+    },
+    {
+      id: 'biography',
+      num: '03',
+      title: 'BIOGRAPHY',
+      romaji: 'DENKI',
+      kanji: '略歴と理念',
+      desc: 'Monograph on Leon Vasari: formative years in Milan, apprenticeship under Kyoto studio masters, and cinema of memory.',
+      meta: 'DIRECTOR MONOGRAPH',
+    },
+    {
+      id: 'journal',
+      num: '04',
+      title: 'JOURNAL',
+      romaji: 'NIPPO',
+      kanji: '制作日誌',
+      desc: 'Restored production dispatches, set journals, optical chemistry notes, and correspondence with screenwriters.',
+      meta: 'ARCHIVAL DISPATCHES',
+    },
+    {
+      id: 'contact',
+      num: '05',
+      title: 'CONTACT',
+      romaji: 'RENRAKU',
+      kanji: 'お問合せ',
+      desc: 'The Vasari Archival Estate, 35mm & 16mm preservation prints, cinematheque retrospectives, and licensing desk.',
+      meta: 'KYOTO & MILAN DESK',
+    },
+  ];
+
   readonly films: FilmDef[] = FILMS;
 
   // 36 tapes: 3 sets of 12 films
@@ -317,7 +372,8 @@ export class App implements OnInit, OnDestroy {
       Math.abs(this.targetMouseX - W / 2) < 0.55 * this.d &&
       Math.abs(this.targetMouseY - cyPx) < 0.55 * this.H &&
       settled &&
-      !this.detailOpen;
+      !this.detailOpen &&
+      !this.menuOpen;
 
     if (isOnCover) {
       this.targetTiltY = ((this.targetMouseX - W / 2) / (0.55 * this.d)) * 8;
@@ -338,7 +394,7 @@ export class App implements OnInit, OnDestroy {
     // 6. Play ring position and scale
     this.playRingX = W / 2 - this.d / 2 - 6;
     this.playRingY = cyPx + 0.36 * this.H;
-    if (this.detailOpen) {
+    if (this.detailOpen || this.menuOpen) {
       this.playRingScale = 0;
     } else {
       this.playRingScale = this.smoothstep(Math.max(0, 1 - Math.abs(this.T - this.s) * 3));
@@ -487,9 +543,9 @@ export class App implements OnInit, OnDestroy {
     this.targetMouseY = e.clientY;
 
     const target = e.target as HTMLElement | null;
-    this.hoveredBtn = !!target?.closest('.hover-btn, a, button, .timeline-hitarea');
+    this.hoveredBtn = !!target?.closest('.hover-btn, a, button, .timeline-hitarea, .menu-nav-link');
 
-    if (this.isPointerDown && !this.detailOpen) {
+    if (this.isPointerDown && !this.detailOpen && !this.menuOpen) {
       const dx = e.clientX - this.startX;
       if (Math.abs(dx) > 5) {
         this.hasDragged = true;
@@ -502,7 +558,7 @@ export class App implements OnInit, OnDestroy {
   }
 
   onShelfPointerDown(e: PointerEvent): void {
-    if (this.detailOpen) return;
+    if (this.detailOpen || this.menuOpen) return;
     this.isPointerDown = true;
     this.hasDragged = false;
     this.isDragging = false;
@@ -519,7 +575,7 @@ export class App implements OnInit, OnDestroy {
   }
 
   onShelfWheel(e: WheelEvent): void {
-    if (this.detailOpen) return;
+    if (this.detailOpen || this.menuOpen) return;
     e.preventDefault();
     const delta = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
     this.T += (delta / (this.ws + this.gap)) * 0.5;
@@ -543,7 +599,7 @@ export class App implements OnInit, OnDestroy {
   }
 
   onTapeClick(v: number): void {
-    if (this.hasDragged) return;
+    if (this.hasDragged || this.detailOpen || this.menuOpen) return;
     const r = this.rel(v, this.s);
     if (Math.abs(r) < 0.5) {
       this.openDetail();
@@ -591,10 +647,27 @@ export class App implements OnInit, OnDestroy {
   }
 
   onKeyDown(e: KeyboardEvent): void {
+    if (this.menuOpen) {
+      if (e.key === 'Escape') {
+        if (this.activeMenuSection !== 'nav') {
+          this.closeSubSection();
+        } else {
+          this.closeMenu();
+        }
+      }
+      return;
+    }
+
     if (this.detailOpen) {
       if (e.key === 'Escape') {
         this.closeDetail();
       }
+      return;
+    }
+
+    if (e.key === 'm' || e.key === 'M') {
+      e.preventDefault();
+      this.openMenu();
       return;
     }
 
@@ -748,5 +821,135 @@ export class App implements OnInit, OnDestroy {
     closeAnim.onfinish = () => {
       this.detailOpen = false;
     };
+  }
+
+  toggleMenu(): void {
+    if (this.menuOpen) {
+      this.closeMenu();
+    } else {
+      this.openMenu();
+    }
+  }
+
+  openMenu(): void {
+    if (this.menuOpen) return;
+    if (this.detailOpen) {
+      this.closeDetail();
+    }
+    this.menuOpen = true;
+    this.activeMenuSection = 'nav';
+
+    setTimeout(() => {
+      const sheetEl = this.menuSheetRef?.nativeElement;
+      const burgerEl = this.burgerBtnRef?.nativeElement;
+      if (!sheetEl) return;
+
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      let top = 28;
+      let right = 36;
+      let bottom = window.innerHeight - 50;
+      let left = window.innerWidth - 62;
+
+      if (burgerEl) {
+        const rect = burgerEl.getBoundingClientRect();
+        top = Math.round(rect.top);
+        right = Math.round(window.innerWidth - rect.right);
+        bottom = Math.round(window.innerHeight - rect.bottom);
+        left = Math.round(rect.left);
+      }
+
+      sheetEl.animate(
+        [
+          { clipPath: `inset(${top}px ${right}px ${bottom}px ${left}px round 12px)` },
+          { clipPath: 'inset(0px 0px 0px 0px round 0px)' },
+        ],
+        {
+          duration: reduced ? 1 : 750,
+          easing: 'cubic-bezier(0.76, 0, 0.18, 1)',
+          fill: 'forwards',
+        }
+      );
+
+      const textLines = sheetEl.querySelectorAll<HTMLElement>('.menu-mask-inner');
+      textLines.forEach((line, i) => {
+        line.animate(
+          [
+            { transform: 'translateY(110%)' },
+            { transform: 'translateY(0%)' },
+          ],
+          {
+            delay: reduced ? 0 : 120 + i * 55,
+            duration: reduced ? 1 : 650,
+            easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+            fill: 'forwards',
+          }
+        );
+      });
+    }, 10);
+  }
+
+  closeMenu(): void {
+    if (!this.menuOpen) return;
+    const sheetEl = this.menuSheetRef?.nativeElement;
+    const burgerEl = this.burgerBtnRef?.nativeElement;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (!sheetEl || reduced) {
+      this.menuOpen = false;
+      this.activeMenuSection = 'nav';
+      return;
+    }
+
+    let top = 28;
+    let right = 36;
+    let bottom = window.innerHeight - 50;
+    let left = window.innerWidth - 62;
+
+    if (burgerEl) {
+      const rect = burgerEl.getBoundingClientRect();
+      top = Math.round(rect.top);
+      right = Math.round(window.innerWidth - rect.right);
+      bottom = Math.round(window.innerHeight - rect.bottom);
+      left = Math.round(rect.left);
+    }
+
+    const closeAnim = sheetEl.animate(
+      [
+        { clipPath: 'inset(0px 0px 0px 0px round 0px)' },
+        { clipPath: `inset(${top}px ${right}px ${bottom}px ${left}px round 12px)` },
+      ],
+      {
+        duration: 600,
+        easing: 'cubic-bezier(0.76, 0, 0.18, 1)',
+        fill: 'forwards',
+      }
+    );
+
+    closeAnim.onfinish = () => {
+      this.menuOpen = false;
+      this.activeMenuSection = 'nav';
+    };
+  }
+
+  onMenuSelect(itemId: string): void {
+    if (itemId === 'archive') {
+      this.closeMenu();
+    } else if (itemId === 'films') {
+      this.closeMenu();
+    } else if (itemId === 'biography' || itemId === 'journal' || itemId === 'contact') {
+      this.activeMenuSection = itemId;
+    }
+  }
+
+  closeSubSection(): void {
+    this.activeMenuSection = 'nav';
+  }
+
+  jumpToFilmFromMenu(targetFilmIndex: number): void {
+    this.closeMenu();
+    const currentFilmIdx = ((Math.round(this.s) % 12) + 12) % 12;
+    const stepDiff = (((targetFilmIndex - currentFilmIdx + 6) % 12) + 12) % 12 - 6;
+    this.T = Math.round(this.T + stepDiff);
   }
 }
